@@ -1,4 +1,4 @@
-name: Validate yml on Pull Requests
+name: Validate
 
 on:
   - pull_request
