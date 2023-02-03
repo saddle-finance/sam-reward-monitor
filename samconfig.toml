@@ -1,16 +1,4 @@
 version = 0.1
-[default]
-[default.deploy]
-[default.deploy.parameters]
-stack_name = "reward-monitor-app"
-s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-mqo3h5a92vji"
-s3_prefix = "reward-monitor-app"
-region = "us-east-1"
-profile = "my-dev-profile"
-confirm_changeset = true
-capabilities = "CAPABILITY_IAM"
-image_repositories = []
-
 [prod]
 [prod.deploy]
 [prod.deploy.parameters]
