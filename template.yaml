@@ -25,7 +25,7 @@ Resources:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
       Timeout: 10
-      CodeUri: lambda-app/
+      CodeUri: ./
       Handler: app.lambdaHandler
       Runtime: nodejs18.x
       Architectures:
