@@ -15,10 +15,8 @@ image_repositories = []
 [prod.deploy]
 [prod.deploy.parameters]
 stack_name = "reward-monitor-app"
-s3_bucket = "aws-sam-cli-managed-prod-pipeline-artifactsbucket-1o55dejyveoxk"
 s3_prefix = "reward-monitor-app"
 region = "us-east-1"
-profile = "my-dev-profile"
 confirm_changeset = true
 capabilities = "CAPABILITY_IAM"
 image_repositories = []
