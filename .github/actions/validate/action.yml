@@ -32,5 +32,5 @@ runs:
     - uses: aws-actions/setup-sam@v1
     - run: sam build
       shell: bash
-    - run: sam validate
+    - run: sam validate --lint
       shell: bash
