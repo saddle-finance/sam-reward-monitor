@@ -14,9 +14,23 @@ image_repositories = []
 [prod]
 [prod.deploy]
 [prod.deploy.parameters]
-stack_name = "reward-monitor-app"
-s3_prefix = "reward-monitor-app"
+stack_name = "reward-monitor-prod-stack"
+s3_bucket = "aws-sam-cli-managed-prod-pipeline-artifactsbucket-1qnyfs2nvlwwf"
+s3_prefix = "reward-monitor-prod-stack"
 region = "us-east-1"
+profile = "saddle-prod"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+image_repositories = []
+
+[dev]
+[dev.deploy]
+[dev.deploy.parameters]
+stack_name = "reward-monitor-dev-stack"
+s3_bucket = "aws-sam-cli-managed-dev-pipeline-artifactsbucket-ruktl65kntz8"
+s3_prefix = "reward-monitor-dev-stack"
+region = "us-east-1"
+profile = "saddle-dev"
 confirm_changeset = true
 capabilities = "CAPABILITY_IAM"
 image_repositories = []
