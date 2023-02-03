@@ -1,0 +1,63 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  reward-monitor-app
+
+  For running simple job every 24 hours and trigger alerting if needed
+  
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    Timeout: 3
+
+Resources:
+  RewardMonitorTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      PrimaryKey:
+        Name: Timestamp
+        Type: Number
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+
+  RewardMonitorFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      Timeout: 10
+      CodeUri: lambda-app/
+      Handler: app.lambdaHandler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      Policies:
+        - DynamoDBWritePolicy:
+            TableName: !Ref RewardMonitorTable
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref RewardMonitorTable
+      Events:
+        CloudWatchEvent:
+          Type: Schedule
+          Properties:
+            Schedule: cron(0 0 ? * * *)
+    Metadata: # Manage esbuild properties
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: "es2020"
+        Sourcemap: true
+        EntryPoints: 
+        - app.ts
+        External:
+        - "@aws-sdk/lib-dynamodb"
+        - "@aws-sdk/client-dynamodb"
+
+Outputs:
+  # Outputs can be checked under the CloudFormation stack page
+  RewardMonitorFunction:
+    Description: "Reward Monitor Lambda Function ARN"
+    Value: !GetAtt RewardMonitorFunction.Arn
+  RewardMonitorFunctionIamRole:
+    Description: "Implicit IAM Role created for Reward Monitor Lambda function"
+    Value: !GetAtt RewardMonitorFunctionRole.Arn

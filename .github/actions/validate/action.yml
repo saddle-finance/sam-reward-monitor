@@ -1,0 +1,36 @@
+name: "Validate Action"
+description: "Validates the SAM template"
+
+inputs:
+  aws-access-key-id:
+    description: "AWS_ACCESS_KEY_ID"
+    required: true
+  aws-secret-access-key:
+    description: "AWS_SECRET_ACCESS_KEY"
+    required: true
+  pipeline-role:
+    description: "IAM role to use to manage pipeline"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/checkout@v3
+    - name: Use Node.js 18.x
+      uses: actions/setup-node@v3
+      with:
+        node-version: 18.x
+    - uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ inputs.aws-access-key-id }}
+        aws-secret-access-key: ${{ inputs.aws-secret-access-key }}
+        aws-region: us-east-1
+        role-to-assume: ${{ inputs.pipeline-role }}
+        role-duration-seconds: 900
+        role-session-name: AssumedPipelineRole
+        role-skip-session-tagging: true
+    - uses: aws-actions/setup-sam@v1
+    - run: sam build
+      shell: bash
+    - run: sam validate
+      shell: bash
