@@ -41,5 +41,5 @@ runs:
     - uses: aws-actions/setup-sam@v1
     - run: sam build
       shell: bash
-    - run: sam deploy --config-env ${{ inputs.config-env }} --no-fail-on-empty-changeset --no-confirm-changeset --s3-bucket ${{ inputs.sam-bucket }} --role-arn ${{ inputs.deploy-role }}
+    - run: sam deploy --stack-name reward-monitor-app --capabilities CAPABILITY_IAM --region us-east-1 --config-env ${{ inputs.config-env }} --no-fail-on-empty-changeset --no-confirm-changeset --s3-bucket ${{ inputs.sam-bucket }} --role-arn ${{ inputs.deploy-role }}
       shell: bash
