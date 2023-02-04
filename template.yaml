@@ -25,7 +25,7 @@ Resources:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
       Timeout: 10
-      CodeUri: ./
+      CodeUri: reward-monitor-lambda-app/
       Handler: app.lambdaHandler
       Runtime: nodejs18.x
       Architectures:
@@ -50,8 +50,7 @@ Resources:
         EntryPoints: 
         - app.ts
         External:
-        - "@aws-sdk/lib-dynamodb"
-        - "@aws-sdk/client-dynamodb"
+        - "@aws-sdk"
 
 Outputs:
   # Outputs can be checked under the CloudFormation stack page

@@ -40,7 +40,7 @@ export const lambdaHandler = async (event: APIGatewayProxyEvent): Promise<APIGat
 
     const response = {
         statusCode: 200,
-        body: JSON.stringify(exampleParams),
+        body: JSON.stringify(exampleParams.Item),
     };
 
     // Save the data to DynamoDB
