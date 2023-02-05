@@ -3,6 +3,13 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb';
 
+import * as dotenv from 'dotenv';
+import findConfig from 'find-config';
+import * as etherscanApi from 'etherscan-api';
+import { ethers } from 'ethers';
+
+dotenv.config({ path: findConfig('.env')?.toString() });
+
 const TABLE_NAME = process.env.TABLE_NAME;
 
 /**
@@ -23,6 +30,13 @@ export const lambdaHandler = async (event: APIGatewayProxyEvent): Promise<APIGat
     // Determine the timestamp at the time of the run
     // Used as PK in DynamoDB
     const timestamp = new Date().getTime();
+
+    // Create an ethers provider
+    const mainnetProvider = new ethers.providers.JsonRpcProvider(
+        `https://eth-mainnet.alchemyapi.io/v2/${process.env.ALCHEMY_API_KEY}`,
+    );
+
+    let api = require('etherscan-api').init('YourApiKey');
 
     // Build the params object for the DynamoDB PutItem command
     const exampleParams = buildPutItemParams(
