@@ -1,19 +1,22 @@
 /**
  * This script calculates the debt of the minter contract
  */
-import { BigNumberish, BigNumber, Contract, Event } from 'ethers';
+import { PutCommandInput } from '@aws-sdk/lib-dynamodb';
+import { Block } from '@ethersproject/abstract-provider';
+import { BaseProvider } from '@ethersproject/providers';
 import { formatUnits } from '@ethersproject/units';
-import { Provider, Block } from '@ethersproject/abstract-provider';
+import { BigNumber, BigNumberish, Contract, ContractInterface, Event } from 'ethers';
+import { defaultAbiCoder } from 'ethers/lib/utils';
 import fetch from 'node-fetch';
 import pRetry, { AbortError } from 'p-retry';
-import { defaultAbiCoder } from 'ethers/lib/utils';
 
-const MINTER_ADDRESS = '0x358fE82370a1B9aDaE2E3ad69D6cF9e503c96018';
-const MINTER_ABI = [];
-const ERC20_ABI = [];=
+import MinterJSON from 'saddle-contract/deployments/mainnet/Minter.json';
+import SDLJSON from 'saddle-contract/deployments/mainnet/SDL.json';
+import { buildPutItemParams } from './utils';
 
+// Etherscan API related constants
 const ETHERSCAN_API = process.env.ETHERSCAN_API;
-const ETHERSCAN_URL = 'https://api.etherscan.io/api';
+const ETHERSCAN_URL = 'https://api.etherscan.io';
 
 interface TimeToRateMap {
     [timestamp: number]: BigNumberish;
@@ -37,9 +40,13 @@ interface EtherscanEventResponse {
     result: EtherscanEvent[];
 }
 
-async function getCulmulativeUsedUp(provider: Provider, creationBlock: Block, latestBlock: Block): Promise<BigNumber> {
+export async function getCulmulativeUsedUpByMinter(
+    provider: BaseProvider,
+    creationBlock: Block,
+    latestBlock: Block,
+): Promise<BigNumber> {
     // Build the Minter Contract object
-    const minter = new Contract(MINTER_ADDRESS, MINTER_ABI, provider);
+    const minter = new Contract(MinterJSON.address, MinterJSON.abi, provider);
 
     // Create event filter
     const eventFilter = minter.filters.UpdateMiningParameters();
@@ -73,53 +80,51 @@ async function getCulmulativeUsedUp(provider: Provider, creationBlock: Block, la
         const timestamp = BigNumber.from(e.timeStamp).toNumber();
         const data = defaultAbiCoder.decode(['uint256', 'uint256'], e.data);
         const saddlePerSecond = BigNumber.from(data[1]);
-        console.log(saddlePerSecond);
         timeToRateMap[timestamp] = saddlePerSecond;
     }
     // Assume the rate is turned off at the latest block timestamp
-    timeToRateMap[latestBlockTimestamp] = BigNumber.from(0);
+    timeToRateMap[latestBlock.timestamp] = BigNumber.from(0);
 
     // Calculate cumulative saddle by multiplying the time delta by the rate
     let cumulativeSaddleRequired = BigNumber.from(0);
-    let lastTimestamp = creationBlockTimestamp;
+    let lastTimestamp = creationBlock.timestamp;
     let prevRate = BigNumber.from(0);
     for (const key in timeToRateMap) {
         const now = parseInt(key);
         const rate = timeToRateMap[now];
-        console.log(`rate was changed from ${prevRate} to ${rate} @ ${now}`);
+        // console.log(`rate was changed from ${prevRate} to ${rate} @ ${now}`);
         const timeDelta = now - lastTimestamp;
         const saddleDelta = prevRate.mul(timeDelta);
         cumulativeSaddleRequired = cumulativeSaddleRequired.add(saddleDelta);
         lastTimestamp = now;
-        prevRate = rate;
+        prevRate = BigNumber.from(rate);
     }
 
     // Print cumulative SDL required by minter
-    console.log(
-        `Cumulative SDL required by Minter on ${network.name} chain : ${formatUnits(
-            cumulativeSaddleRequired.toString(),
-            18,
-        )}`,
-    );
+    console.log(`Cumulative SDL required by Minter on mainnet : ${formatUnits(cumulativeSaddleRequired, 18)}`);
+
+    return cumulativeSaddleRequired;
 }
 
-async function getCumulativeFilledViaTransferEvents(
+export async function getCumulativeFilledViaTransferEvents(
+    provider: BaseProvider,
+    creationBlock: Block,
+    latestBlock: Block,
     tokenAddress: string,
     recipientAddress: string,
-    provider: Provider,
 ): Promise<BigNumber> {
     // Build the ERC20 token Contract object
-    const sdl = new Contract(tokenAddress, ERC20_ABI, provider);
+    const sdl = new Contract(tokenAddress, SDLJSON.abi, provider);
 
     // Get transfer event filter
-    const transferEventFilter = sdl.filters.Transfer(undefined, MINTER_ADDRESS);
+    const transferEventFilter = sdl.filters.Transfer(undefined, recipientAddress);
     const transferTopic0 = transferEventFilter.topics ? transferEventFilter.topics[0] : undefined;
     const transferTopic2 = transferEventFilter.topics ? transferEventFilter.topics[2] : undefined;
 
     // Use etherscan API to get all events matching the filter
     const etherscanSDLTransferQueryURL =
         `${ETHERSCAN_URL}/api?module=logs&action=getLogs` +
-        `&fromBlock=${creationBlockNumber}&toBlock=latest` +
+        `&fromBlock=${creationBlock.number}&toBlock=${latestBlock.number}` +
         `&address=${sdl.address}&topic0=${transferTopic0}&topic2=${transferTopic2}&topic0_2_opr=and` +
         `&apikey=${ETHERSCAN_API}`;
 
@@ -174,6 +179,7 @@ async function getCumulativeFilledViaTransferEvents(
         const amount = BigNumber.from(e.data);
         cumulativeSDLSent = cumulativeSDLSent.add(amount);
     }
+    console.log(`Cumulative SDL sent to minter: ${formatUnits(cumulativeSDLSent, 18)} SDL`);
 
     return cumulativeSDLSent;
 }
@@ -185,7 +191,7 @@ async function getCumulativeFilledViaTransferEvents(
  * @param ratePerSecond current rate per second
  * @returns runway in seconds
  */
-function calculateRunwayInSeconds(
+export function calculateRunwayInSeconds(
     cumulativeFilled: BigNumberish,
     cumulativeUsedUp: BigNumberish,
     ratePerSecond: BigNumberish,
@@ -197,46 +203,52 @@ function calculateRunwayInSeconds(
  * Calculates the debt of the minter contract based on the culmalative sent, the cumulative spent, the current rate per second, and the current balance
  * @param cumulativeSent cumulative amount of tokens sent to the contract
  * @param cumulativeUsedUp cumulative amount of tokens used up by the contract, integral of the rate per second over time
- * @param ratePerSecond current rate per second
- * @param currentBalance current balance of the contract
  * @returns reward debt that needs to be paid to the contract
  */
-function calculateRewardDebt(
-    cumulativeSent: BigNumberish,
-    cumulativeUsedUp: BigNumberish,
-    ratePerSecond: BigNumberish,
-    currentBalance: BigNumberish,
-): BigNumber {
-    return BigNumber.from(cumulativeSent).sub(cumulativeUsedUp).sub(BigNumber.from(currentBalance).mul(ratePerSecond));
+export function calculateRewardDebt(cumulativeSent: BigNumberish, cumulativeUsedUp: BigNumberish): BigNumber {
+    return BigNumber.from(cumulativeSent).sub(cumulativeUsedUp);
 }
 
-async function calculateMinterOwed(provider: Provider): Promise<{}> {
-    const latestBlock = await provider.getBlock('latest');
-    const latestBlockTimestamp = latestBlock.timestamp;
+export async function getMinterOwedPutItem(provider: BaseProvider, tableName: string): Promise<PutCommandInput> {
+    console.log('Get block information');
+    const [creationBlock, latestBlock] = await Promise.all([
+        provider.getBlock(MinterJSON.receipt.blockNumber as number),
+        provider.getBlock('latest'),
+    ]);
 
-    const minter = (await ethers.getContract('Minter')) as Minter;
-    const creationTxHash = (await deployments.get('Minter')).transactionHash as string;
-    const creationBlockNumber = (await ethers.provider.getTransaction(creationTxHash)).blockNumber as number;
-    const creationBlockTimestamp = (await ethers.provider.getBlock(creationBlockNumber)).timestamp;
+    const minter = new Contract(MinterJSON.address, MinterJSON.abi, provider);
+    const sdl = new Contract(SDLJSON.address, SDLJSON.abi, provider);
 
-    // Check current Saddle per second rate
-    const currentSaddleRate = await minter.rate();
-    if (currentSaddleRate.gt(0)) {
-        console.warn('\x1b[33m%s\x1b[0m', `Saddle per second is not 0. It is ${currentSaddleRate}`);
-        console.warn(
-            '\x1b[33m%s\x1b[0m',
-            `For the purposes of the calculation, this script will assume it is changed to 0 at current block (${latestBlock.number})`,
-        );
-    }
+    console.log('Get etherscan and on-chain data information');
 
-    // Print cumulative SDL sent to minter
-    console.log(
-        `Cumulative SDL sent to Minter on ${network.name} chain : ${formatUnits(cumulativeSDLSent.toString(), 18)}`,
+    const [cumulativeFilled, cumulativeUsedUp, currentRate, currentSDLBalance] = await Promise.all([
+        getCumulativeFilledViaTransferEvents(provider, creationBlock, latestBlock, sdl.address, minter.address),
+        getCulmulativeUsedUpByMinter(provider, creationBlock, latestBlock),
+        minter.rate() as Promise<BigNumber>,
+        sdl.balanceOf(MinterJSON.address) as Promise<BigNumber>,
+    ]);
+    console.log('cumulativeFilled', cumulativeFilled.toString());
+    console.log('cumulativeUsedUp', cumulativeUsedUp.toString());
+    console.log('currentRate', currentRate.toString());
+    console.log('currentSDLBalance', currentSDLBalance.toString());
+
+    const runwayInSeconds = calculateRunwayInSeconds(cumulativeFilled, cumulativeUsedUp, currentRate);
+    const rewardDebt = calculateRewardDebt(cumulativeFilled, cumulativeUsedUp);
+
+    console.log('runwayInSeconds', runwayInSeconds.toString());
+    console.log('rewardDebt', rewardDebt.toString());
+
+    return buildPutItemParams(
+        tableName,
+        latestBlock.timestamp,
+        1,
+        MinterJSON.address,
+        'Minter',
+        'SDL',
+        SDLJSON.address,
+        currentRate.toString(),
+        currentSDLBalance.toString(),
+        runwayInSeconds.toString(),
+        rewardDebt.toString(),
     );
-
-    // Print total SDL owed by minter
-    const totalSDLOwed = cumulativeSaddleRequired.gte(cumulativeSDLSent)
-        ? cumulativeSaddleRequired.sub(cumulativeSDLSent)
-        : BigNumber.from(0);
-    console.log(`Total SDL owed by Minter on ${network.name} chain : ${formatUnits(totalSDLOwed.toString(), 18)}`);
 }
