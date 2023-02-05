@@ -31,6 +31,7 @@ export const lambdaHandler = async (event: APIGatewayProxyEvent): Promise<APIGat
     // Build the params object for the DynamoDB PutItem command
     console.log('Getting minter owed data...');
 
+    // Get the minter owed data as a DynamoDB PutItem params object
     const params = await getMinterOwedPutItem(mainnetProvider, TABLE_NAME).catch((err) => {
         console.error(`Failed to get minter owed data. Error: ${err}`);
         throw err;
