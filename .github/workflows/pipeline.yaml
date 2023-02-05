@@ -50,8 +50,8 @@ jobs:
 
       - name: Build resources
         run: sam build --template ${SAM_TEMPLATE} --use-container \
-          -e ALCHEMY_API_KEY=${{ env.ALCHEMY_API_KEY }}\
-          -e ETHERSCAN_API=${{ env.ETHERSCAN_API }}"
+          --parameter-overrides "ParameterKey=AlchemyApiKey,ParameterValue=${{ env.ALCHEMY_API_KEY }} \
+          ParameterKey=EtherscanApi,ParameterValue=${{ env.ETHERSCAN_API }}"
 
       - name: Assume the prod pipeline user role
         uses: aws-actions/configure-aws-credentials@v1-node16
