@@ -1,10 +1,10 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: >
   reward-monitor-app
 
   For running simple job every 24 hours and trigger alerting if needed
-  
+
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
   Function:
@@ -41,16 +41,34 @@ Resources:
           Type: Schedule
           Properties:
             Schedule: cron(0 0 ? * * *)
+        GetRecentlySavedJson:
+          Type: Api
+          Properties:
+            RestApiId: !Ref RewardMonitorApi
+            Path: /check
+            Method: get
     Metadata: # Manage esbuild properties
       BuildMethod: esbuild
       BuildProperties:
         Minify: true
         Target: "es2020"
         Sourcemap: true
-        EntryPoints: 
-        - app.ts
+        EntryPoints:
+          - app.ts
         External:
-        - "@aws-sdk"
+          - "@aws-sdk"
+
+  RewardMonitorApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      CacheClusterEnabled: true
+      CacheClusterSize: "0.5"
+      MethodSettings:
+        - CachingEnabled: true
+          CacheTtlInSeconds: 86400 # This endpoint caches results for 24 hours
+          HttpMethod: "GET" # Only accept GET requests
+          ResourcePath: "/*" # All paths
 
 Outputs:
   # Outputs can be checked under the CloudFormation stack page
@@ -60,3 +78,6 @@ Outputs:
   RewardMonitorFunctionIamRole:
     Description: "Implicit IAM Role created for Reward Monitor Lambda function"
     Value: !GetAtt RewardMonitorFunctionRole.Arn
+  ProdDataEndpoint:
+    Description: "API Prod stage endpoint"
+    Value: !Sub "https://${RewardMonitorApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
