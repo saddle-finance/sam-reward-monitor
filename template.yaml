@@ -10,6 +10,14 @@ Globals:
   Function:
     Timeout: 3
 
+Parameters:
+  AlchemyApiKey:
+    Type: String
+    Description: API key for Alchemy JSON RPC access
+  EtherscanApi:
+    Type: String
+    Description: Etherscan API key for mainnet
+
 Resources:
   RewardMonitorTable:
     Type: AWS::Serverless::SimpleTable
@@ -36,6 +44,8 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !Ref RewardMonitorTable
+          ALCHEMY_API_KEY: !Ref AlchemyApiKey
+          ETHERSCAN_API: !Ref EtherscanApi
       Events:
         CloudWatchEvent:
           Type: Schedule
