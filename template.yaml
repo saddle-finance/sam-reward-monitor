@@ -66,9 +66,9 @@ Resources:
       CacheClusterSize: "0.5"
       MethodSettings:
         - CachingEnabled: true
-          CacheTtlInSeconds: 86400 # This endpoint caches results for 24 hours
-          HttpMethod: "GET" # Only accept GET requests
-          ResourcePath: "/*" # All paths
+          CacheTtlInSeconds: 3600 # 3600 secs max cache
+          HttpMethod: "*" # Required for caching
+          ResourcePath: "/*" # Requried for caching
 
 Outputs:
   # Outputs can be checked under the CloudFormation stack page
