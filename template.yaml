@@ -51,6 +51,12 @@ Resources:
           Type: Schedule
           Properties:
             Schedule: cron(0 0 ? * * *)
+        GetRecentlySavedJson:
+          Type: Api
+          Properties:
+            RestApiId: !Ref RewardMonitorApi
+            Path: /check
+            Method: get
     Metadata: # Manage esbuild properties
       BuildMethod: esbuild
       BuildProperties:
@@ -63,6 +69,18 @@ Resources:
           - "@aws-sdk"
           - "esbuild"
 
+  RewardMonitorApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      CacheClusterEnabled: true
+      CacheClusterSize: "0.5"
+      MethodSettings:
+        - CachingEnabled: true
+          CacheTtlInSeconds: 3600 # 3600 secs max cache
+          HttpMethod: "*" # Required for caching
+          ResourcePath: "/*" # Requried for caching
+
 Outputs:
   # Outputs can be checked under the CloudFormation stack page
   RewardMonitorFunction:
@@ -71,3 +89,6 @@ Outputs:
   RewardMonitorFunctionIamRole:
     Description: "Implicit IAM Role created for Reward Monitor Lambda function"
     Value: !GetAtt RewardMonitorFunctionRole.Arn
+  ProdDataEndpoint:
+    Description: "API Prod stage endpoint"
+    Value: !Sub "https://${RewardMonitorApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
