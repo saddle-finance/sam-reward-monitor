@@ -1,4 +1,4 @@
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
+import { APIGatewayEvent, APIGatewayProxyResult, Context, EventBridgeEvent } from 'aws-lambda';
 
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb';
@@ -7,15 +7,24 @@ const TABLE_NAME = process.env.TABLE_NAME;
 
 /**
  *
- * Event doc: https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html#api-gateway-simple-proxy-for-lambda-input-format
- * @param {Object} event - API Gateway Lambda Proxy Input Format
+ * @param {Object} event - API Gateway Lambda Proxy Input Format or EventBridge Event
  *
  * Return doc: https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html
  * @returns {Object} object - API Gateway Lambda Proxy Output Format
  *
  */
 
-export const lambdaHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+export const lambdaHandler = async (
+    event: APIGatewayEvent | EventBridgeEvent<string, any>,
+    context: Context,
+): Promise<APIGatewayProxyResult> => {
+    if ('source' in event) {
+        console.log('EventBridge event received');
+        console.log(JSON.stringify(event, null, 2));
+    } else {
+        console.log('API Gateway event received');
+        console.log(JSON.stringify(event, null, 2));
+    }
     // Create client objects
     const ddbClient = new DynamoDBClient({});
     const ddbDocClient = DynamoDBDocumentClient.from(ddbClient);
