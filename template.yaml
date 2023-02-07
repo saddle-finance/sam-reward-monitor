@@ -49,7 +49,7 @@ Resources:
       Architectures:
         - x86_64
       Policies:
-        - DynamoDBWritePolicy:
+        - DynamoDBCrudPolicy:
             TableName: !Ref RewardMonitorTable
       Environment:
         Variables:
