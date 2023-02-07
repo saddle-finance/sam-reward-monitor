@@ -1,7 +1,7 @@
-import { APIGatewayEvent, APIGatewayProxyCallback, APIGatewayProxyResult, Context, EventBridgeEvent } from 'aws-lambda';
+import { APIGatewayEvent, APIGatewayProxyResult, Context, EventBridgeEvent } from 'aws-lambda';
 
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import { runDailyJob } from './src/cloudwatch/daily';
 import { handleCheck } from './src/api/check';
 import { getConfig, getSanitzedConfig } from './src/utils/config';
