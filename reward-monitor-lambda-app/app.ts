@@ -4,8 +4,7 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb';
 import { runDailyJob } from './src/cloudwatch/daily';
 import { handleCheck } from './src/api/check';
-
-const TABLE_NAME = process.env.TABLE_NAME as string;
+import { getConfig, getSanitzedConfig } from './src/utils/config';
 
 /**
  *
@@ -24,6 +23,9 @@ export const lambdaHandler = async (
     const ddbClient = new DynamoDBClient({});
     const ddbDocClient = DynamoDBDocumentClient.from(ddbClient);
 
+    // Get the santitizied config derived from the environment variables
+    const config = getSanitzedConfig(getConfig());
+
     let response = {
         statusCode: 200,
         body: "No job was run. This is likely because the API path was not '/check'",
@@ -36,7 +38,7 @@ export const lambdaHandler = async (
 
         // Run the daily job and return the response
         // If the job fails, the error will be caught and logged
-        response = await runDailyJob(ddbDocClient).catch((err) => {
+        response = await runDailyJob(config, ddbDocClient).catch((err) => {
             const errorMessage = `Failed to run daily job. Error: ${JSON.stringify(err)}`;
             console.error(errorMessage);
             return {
@@ -51,7 +53,7 @@ export const lambdaHandler = async (
         // Check if the path is /check and handle it
         if (event.path.toLowerCase() === '/check') {
             console.log('Handling /check');
-            response = await handleCheck(ddbDocClient).catch((err) => {
+            response = await handleCheck(config, ddbDocClient).catch((err) => {
                 const errorMessage = `Failed to handle /check. Error: ${JSON.stringify(err)}`;
                 console.error(errorMessage);
                 return {

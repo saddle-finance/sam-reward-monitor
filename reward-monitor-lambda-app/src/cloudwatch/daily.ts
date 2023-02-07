@@ -2,7 +2,9 @@ import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb';
 import { APIGatewayProxyResult } from 'aws-lambda';
 
 import { ethers } from 'ethers';
+import { Config } from '../utils/config';
 import { getMinterOwedPutItem } from '../utils/minterDebtHelper';
+import { sendPagerDutyEvent } from '../utils/pagerDutyHelper';
 
 /**
  * Run the job that is scheduled to run daily
@@ -11,7 +13,10 @@ import { getMinterOwedPutItem } from '../utils/minterDebtHelper';
  * @param ddbDocClient dynamodb document client to use
  * @returns { Promise<APIGatewayProxyResult> } API Gateway Proxy Result
  */
-export const runDailyJob = async (ddbDocClient: DynamoDBDocumentClient): Promise<APIGatewayProxyResult> => {
+export const runDailyJob = async (
+    config: Config,
+    ddbDocClient: DynamoDBDocumentClient,
+): Promise<APIGatewayProxyResult> => {
     const response = {
         statusCode: 200,
         body: '',
@@ -19,22 +24,33 @@ export const runDailyJob = async (ddbDocClient: DynamoDBDocumentClient): Promise
 
     // Create an ethers provider
     const mainnetProvider = new ethers.providers.JsonRpcProvider(
-        `https://eth-mainnet.alchemyapi.io/v2/${process.env.ALCHEMY_API_KEY}`,
+        `https://eth-mainnet.alchemyapi.io/v2/${config.ALCHEMY_API_KEY}`,
     );
 
     // Build the params object for the DynamoDB PutItem command
     console.log('Getting minter owed data...');
 
     // Get the minter owed data as a DynamoDB PutItem params object
-    const params = await getMinterOwedPutItem(mainnetProvider, process.env.TABLE_NAME).catch((err) => {
+    const params = await getMinterOwedPutItem(config, mainnetProvider).catch((err) => {
         console.error(`Failed to get minter owed data. Error: ${err}`);
         throw err;
     });
 
     response.body = JSON.stringify(params.Item);
 
+    // Check if the runway is less than 1 week
+    // If it is, send a pager duty event, alerting the on-call engineer
+    if (parseInt(params.Item.RunwayInSeconds) < 604800) {
+        console.log('Runway is less than 1 week. Runway: ' + params.Item.RunwayInSeconds);
+        if (config.NODE_ENV === 'production')
+            sendPagerDutyEvent(config, `Runway is less than 1 week. Runway: ${params.Item.RunwayInSeconds}`, 'warning');
+        else {
+            console.log('Pager duty event not sent because NODE_ENV is not production');
+        }
+    }
+
     // Save the data to DynamoDB
-    await ddbDocClient.send(new PutCommand(params)).catch((err) => {
+    ddbDocClient.send(new PutCommand(params)).catch((err) => {
         console.error(`Failed to save data to DynamoDB. Error: ${err}`);
         throw err;
     });

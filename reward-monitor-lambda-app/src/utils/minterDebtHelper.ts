@@ -12,10 +12,10 @@ import pRetry from 'p-retry';
 
 import MinterJSON from 'saddle-contract/deployments/mainnet/Minter.json';
 import SDLJSON from 'saddle-contract/deployments/mainnet/SDL.json';
-import { buildPutItemParams } from './dynamoDBHelper';
+import { Config } from './config';
+import { buildPutItemParams, RewardMonitorItemPutCommandInput } from './dynamoDBHelper';
 
 // Etherscan API related constants
-const ETHERSCAN_API = process.env.ETHERSCAN_API;
 const ETHERSCAN_URL = 'https://api.etherscan.io';
 
 // Etherscan's events API example response:
@@ -63,12 +63,14 @@ interface EtherscanEventResponse {
 /**
  * Get the total amount of SDL used up by the minter contract
  * This is calculated by finding the integral of the SDL emission rate over time until the latest block
+ * @param config config object with envrionment variables
  * @param provider The provider to use to get the latest block and SDL emission rate
  * @param minterCreationBlock The block when the minter contract was created (used to get SDL emission rate)
  * @param latestBlock The latest block to calculate the SDL used up until
  * @returns The total amount of SDL used up by the minter contract
  */
 export async function getCulmulativeUsedUpByMinter(
+    config: Config,
     provider: BaseProvider,
     creationBlock: Block,
     latestBlock: Block,
@@ -84,7 +86,7 @@ export async function getCulmulativeUsedUpByMinter(
     const etherscanQueryURL =
         `${ETHERSCAN_URL}/api?module=logs&action=getLogs` +
         `&fromBlock=${creationBlock.number}&toBlock=${latestBlock.number}` +
-        `&address=${minter.address}&topic0=${topic0}&apikey=${ETHERSCAN_API}`;
+        `&address=${minter.address}&topic0=${topic0}&apikey=${config.ETHERSCAN_API}`;
 
     // Retry the request if it fails
     const response = await pRetry(() => fetch(etherscanQueryURL), {
@@ -137,7 +139,8 @@ export async function getCulmulativeUsedUpByMinter(
 }
 
 /**
- * Get the total amount of a token refilled via transfers to the recipient address
+ * Get the total amount of a token refilled via transfers to the recipient address\
+ * @param config config object with envrionment variables
  * @param provider The provider to use to get the latest block and the reward token emission rate
  * @param creationBlock The block when the minter contract was created (used to get the reward token emission rate)
  * @param latestBlock The latest block to calculate upto
@@ -146,6 +149,7 @@ export async function getCulmulativeUsedUpByMinter(
  * @returns The total amount of the reward token used up by the minter contract
  */
 export async function getCumulativeFilledViaTransferEvents(
+    config: Config,
     provider: BaseProvider,
     creationBlock: Block,
     latestBlock: Block,
@@ -165,7 +169,7 @@ export async function getCumulativeFilledViaTransferEvents(
         `${ETHERSCAN_URL}/api?module=logs&action=getLogs` +
         `&fromBlock=${creationBlock.number}&toBlock=${latestBlock.number}` +
         `&address=${sdl.address}&topic0=${transferTopic0}&topic2=${transferTopic2}&topic0_2_opr=and` +
-        `&apikey=${ETHERSCAN_API}`;
+        `&apikey=${config.ETHERSCAN_API}`;
 
     // Retry the request if it fails
     const sdlTransferResponse = await pRetry(() => fetch(etherscanSDLTransferQueryURL), {
@@ -225,11 +229,14 @@ export function calculateRewardDebt(cumulativeSent: BigNumberish, cumulativeUsed
 
 /**
  * Calculates the amount of SDL that the minter contract is owed
+ * @param config config object with envrionment variables
  * @param provider web3 provider
- * @param tableName dynamodb table name
  * @returns dynamodb put item command input data
  */
-export async function getMinterOwedPutItem(provider: BaseProvider, tableName: string): Promise<PutCommandInput> {
+export async function getMinterOwedPutItem(
+    config: Config,
+    provider: BaseProvider,
+): Promise<RewardMonitorItemPutCommandInput> {
     console.log('Get block information');
     const [creationBlock, latestBlock] = await Promise.all([
         provider.getBlock(MinterJSON.receipt.blockNumber as number),
@@ -242,8 +249,8 @@ export async function getMinterOwedPutItem(provider: BaseProvider, tableName: st
     console.log('Get etherscan and on-chain data information');
 
     const [cumulativeFilled, cumulativeUsedUp, currentRate, currentSDLBalance] = await Promise.all([
-        getCumulativeFilledViaTransferEvents(provider, creationBlock, latestBlock, sdl.address, minter.address),
-        getCulmulativeUsedUpByMinter(provider, creationBlock, latestBlock),
+        getCumulativeFilledViaTransferEvents(config, provider, creationBlock, latestBlock, sdl.address, minter.address),
+        getCulmulativeUsedUpByMinter(config, provider, creationBlock, latestBlock),
         minter.rate() as Promise<BigNumber>,
         sdl.balanceOf(MinterJSON.address) as Promise<BigNumber>,
     ]);
@@ -259,7 +266,7 @@ export async function getMinterOwedPutItem(provider: BaseProvider, tableName: st
     console.log('rewardDebt', rewardDebt.toString());
 
     return buildPutItemParams(
-        tableName,
+        config.TABLE_NAME,
         latestBlock.timestamp,
         1,
         MinterJSON.address,

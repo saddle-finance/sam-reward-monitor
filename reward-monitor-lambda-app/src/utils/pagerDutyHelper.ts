@@ -1,15 +1,17 @@
 import fetch from 'node-fetch';
 import pRetry from 'p-retry';
+import { Config } from './config';
 
 /**
  * Send a PagerDuty event via PagerDuty Event v2 API
+ * @param config config object
  * @param message message to send to PagerDuty
  * @param severity severity of the event. Can be one of: 'info', 'warning', 'error', 'critical'
  */
-export async function sendPagerDutyEvent(message: string, severity: string) {
+export async function sendPagerDutyEvent(config: Config, message: string, severity: string) {
     // Create a PagerDuty Event API payload
     const payload = {
-        routing_key: process.env.PAGERDUTY_ROUTING_KEY,
+        routing_key: config.PAGERDUTY_ROUTING_KEY,
         event_action: 'trigger',
         payload: {
             summary: message,

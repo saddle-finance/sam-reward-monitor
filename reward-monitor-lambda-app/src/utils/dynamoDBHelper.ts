@@ -7,6 +7,23 @@ import {
     QueryCommandOutput,
 } from '@aws-sdk/lib-dynamodb';
 
+export interface RewardMonitorItem {
+    Timestamp: number;
+    ChainId: number;
+    ContractAddress: string;
+    ContractName: string;
+    RewardTokenTicker: string;
+    RewardTokenAddress: string;
+    RatePerSecond: string;
+    CurrentBalance: string;
+    RunwayInSeconds: string;
+    RewardDebt: string;
+}
+
+export interface RewardMonitorItemPutCommandInput extends PutCommandInput {
+    Item: RewardMonitorItem;
+}
+
 /**
  * Builds the DynamoDB PutItem params.
  * @param tableName The table name.
@@ -33,7 +50,7 @@ export function buildPutItemParams(
     currentBalance: string,
     runwayInSeconds: string,
     rewardDebt: string,
-): PutCommandInput {
+): RewardMonitorItemPutCommandInput {
     return {
         TableName: tableName,
         Item: {
