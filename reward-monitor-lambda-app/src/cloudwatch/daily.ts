@@ -43,9 +43,14 @@ export const runDailyJob = async (
     // If it is, send a pager duty event, alerting the on-call engineer
     if (parseInt(params.Item.RunwayInSeconds) < 604800) {
         console.log('Runway is less than 1 week. Runway: ' + params.Item.RunwayInSeconds);
-        if (config.NODE_ENV === 'production')
-            sendPagerDutyEvent(config, `Runway is less than 1 week. Runway: ${params.Item.RunwayInSeconds}`, 'warning');
-        else {
+        if (config.NODE_ENV === 'production') {
+            console.log('Sending Pager duty event');
+            await sendPagerDutyEvent(
+                config,
+                `Runway is less than 1 week. Runway: ${params.Item.RunwayInSeconds}`,
+                'warning',
+            );
+        } else {
             console.log('Pager duty event not sent because NODE_ENV is not production');
         }
     }
