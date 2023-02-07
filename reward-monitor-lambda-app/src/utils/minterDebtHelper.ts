@@ -1,7 +1,6 @@
 /**
  * This script calculates the debt of the minter contract
  */
-import { PutCommandInput } from '@aws-sdk/lib-dynamodb';
 import { Block } from '@ethersproject/abstract-provider';
 import { BaseProvider } from '@ethersproject/providers';
 import { formatUnits } from '@ethersproject/units';
@@ -267,7 +266,7 @@ export async function getMinterOwedPutItem(
 
     return buildPutItemParams(
         config.TABLE_NAME,
-        latestBlock.timestamp,
+        latestBlock.timestamp * 1000,
         1,
         MinterJSON.address,
         'Minter',

@@ -1,8 +1,9 @@
-import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import { APIGatewayProxyResult } from 'aws-lambda';
 
 import { ethers } from 'ethers';
 import { Config } from '../utils/config';
+import { saveToDynamoDBWithLatestCopy } from '../utils/dynamoDBHelper';
 import { getMinterOwedPutItem } from '../utils/minterDebtHelper';
 import { sendPagerDutyEvent } from '../utils/pagerDutyHelper';
 
@@ -50,7 +51,7 @@ export const runDailyJob = async (
     }
 
     // Save the data to DynamoDB
-    ddbDocClient.send(new PutCommand(params)).catch((err) => {
+    await saveToDynamoDBWithLatestCopy(ddbDocClient, params.Item, config.TABLE_NAME).catch((err) => {
         console.error(`Failed to save data to DynamoDB. Error: ${err}`);
         throw err;
     });

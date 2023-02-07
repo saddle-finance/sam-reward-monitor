@@ -1,10 +1,10 @@
 import {
+    BatchWriteCommand,
+    BatchWriteCommandOutput,
     DynamoDBDocumentClient,
-    PutCommand,
+    GetCommand,
+    GetCommandOutput,
     PutCommandInput,
-    PutCommandOutput,
-    QueryCommand,
-    QueryCommandOutput,
 } from '@aws-sdk/lib-dynamodb';
 
 export interface RewardMonitorItem {
@@ -69,22 +69,38 @@ export function buildPutItemParams(
 }
 
 /**
- * Save given PutCommandInput to DynamoDB table using DynamoDBDocumentClient
+ * Saves given item to DynamoDB table as well as a copy with Timestamp = 0 to store as the latest entry
+ * Assumes that the primary key is named Timestamp
  * @params ddbDocClient - DynamoDBDocumentClient object
- * @params params - Params for PutItemCommand
+ * @params item - Item to save to DynamoDB
  * @params tableName - Name of DynamoDB table
  * @returns {Promise<PutCommandOutput>} Promise that resolves when PutItemCommand is complete
  */
-export const saveToDynamoDB = async (
+export const saveToDynamoDBWithLatestCopy = async (
     ddbDocClient: DynamoDBDocumentClient,
-    params: PutCommandInput,
+    item: RewardMonitorItem,
     tableName: string,
-): Promise<PutCommandOutput> => {
-    const putParams = {
-        ...params,
-        TableName: tableName,
+): Promise<BatchWriteCommandOutput> => {
+    const batchWriteParams = {
+        RequestItems: {
+            [tableName]: [
+                {
+                    PutRequest: {
+                        Item: item,
+                    },
+                },
+                {
+                    PutRequest: {
+                        Item: {
+                            ...item,
+                            Timestamp: 0, // Use 0 as the primary key to store as the latest entry
+                        },
+                    },
+                },
+            ],
+        },
     };
-    return ddbDocClient.send(new PutCommand(putParams)).catch((err) => {
+    return ddbDocClient.send(new BatchWriteCommand(batchWriteParams)).catch((err) => {
         throw new Error(`Failed to save data to DynamoDB. Error: ${err}`);
     });
 };
@@ -93,18 +109,19 @@ export const saveToDynamoDB = async (
  * Read and return the latest entry from given DynamoDB table sorted by the primary key
  * @params ddbDocClient - DynamoDBDocumentClient object
  * @params tableName - Name of DynamoDB table
- * @returns {Promise<QueryCommandOutput>} Promise that resolves when QueryCommand is complete
+ * @returns {Promise<GetCommandOutput>} Promise that resolves when QueryCommand is complete
  */
 export const readLatestFromDynamoDB = async (
     ddbDocClient: DynamoDBDocumentClient,
     tableName: string,
-): Promise<QueryCommandOutput> => {
+): Promise<GetCommandOutput> => {
     const params = {
         TableName: tableName,
-        ScanIndexForward: false,
-        Limit: 1,
+        Key: {
+            Timestamp: 0, // Use 0 as the primary key to get the latest entry
+        },
     };
-    return ddbDocClient.send(new QueryCommand(params)).catch((err) => {
+    return ddbDocClient.send(new GetCommand(params)).catch((err) => {
         throw new Error(`Failed to read data from DynamoDB. Error: ${err}`);
     });
 };

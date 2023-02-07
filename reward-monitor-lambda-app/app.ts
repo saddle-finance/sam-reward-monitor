@@ -24,9 +24,7 @@ export const lambdaHandler = async (
     const ddbDocClient = DynamoDBDocumentClient.from(ddbClient);
 
     // Get the santitizied config derived from the environment variables
-    console.log(JSON.stringify(process.env));
     const config = getSanitzedConfig(getConfig());
-    console.log('Config: ' + JSON.stringify(config));
 
     let response = {
         statusCode: 200,
@@ -41,7 +39,7 @@ export const lambdaHandler = async (
         // Run the daily job and return the response
         // If the job fails, the error will be caught and logged
         response = await runDailyJob(config, ddbDocClient).catch((err) => {
-            const errorMessage = `Failed to run daily job. Error: ${JSON.stringify(err)}`;
+            const errorMessage = `Failed to run daily job. Error: ${err}`;
             console.error(errorMessage);
             return {
                 statusCode: 500,
@@ -56,7 +54,7 @@ export const lambdaHandler = async (
         if (event.path.toLowerCase() === '/check') {
             console.log('Handling /check');
             response = await handleCheck(config, ddbDocClient).catch((err) => {
-                const errorMessage = `Failed to handle /check. Error: ${JSON.stringify(err)}`;
+                const errorMessage = `Failed to handle /check. Error: ${err}`;
                 console.error(errorMessage);
                 return {
                     statusCode: 500,

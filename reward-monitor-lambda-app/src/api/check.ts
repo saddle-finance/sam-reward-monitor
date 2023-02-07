@@ -13,8 +13,8 @@ export const handleCheck = async (
 ): Promise<APIGatewayProxyResult> => {
     const item = await readLatestFromDynamoDB(ddbDocClient, config.TABLE_NAME)
         .then((o) => {
-            if (o.Items && o.Items.length > 0) {
-                return o.Items[0];
+            if (o.Item) {
+                return o.Item;
             }
             throw new Error('No items found in DynamoDB');
         })
