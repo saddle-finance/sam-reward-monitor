@@ -13,6 +13,7 @@ import MinterJSON from 'saddle-contract/deployments/mainnet/Minter.json';
 import SDLJSON from 'saddle-contract/deployments/mainnet/SDL.json';
 import { Config } from './config';
 import { buildPutItemParams, RewardMonitorItemPutCommandInput } from './dynamoDBHelper';
+import { getUTCDayTimestamp } from './time';
 
 // Etherscan API related constants
 const ETHERSCAN_URL = 'https://api.etherscan.io';
@@ -236,10 +237,7 @@ export async function getMinterOwedPutItem(
     config: Config,
     provider: BaseProvider,
 ): Promise<RewardMonitorItemPutCommandInput> {
-    // Mod now by 24 hours and subtract now by the remainder to get the start of the current day
-    const now = Date.now();
-    const dayInMilliseconds = 24 * 60 * 60 * 1000;
-    const currentDayTimestamp = now - (now % dayInMilliseconds);
+    const currentDayTimestamp = getUTCDayTimestamp();
 
     console.log('Get block information');
     const [creationBlock, latestBlock] = await Promise.all([

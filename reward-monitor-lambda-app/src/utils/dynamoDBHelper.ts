@@ -8,6 +8,7 @@ import {
     PutCommandInput,
     PutCommandOutput,
 } from '@aws-sdk/lib-dynamodb';
+import { getUTCDayTimestamp } from './time';
 
 export interface RewardMonitorItem {
     Timestamp: number;
@@ -104,9 +105,7 @@ export const readLatestFromDynamoDB = async (
     ddbDocClient: DynamoDBDocumentClient,
     tableName: string,
 ): Promise<GetCommandOutput> => {
-    const now = Date.now();
-    const dayInMilliseconds = 24 * 60 * 60 * 1000;
-    const currentDayTimestamp = now - (now % dayInMilliseconds);
+    const currentDayTimestamp = getUTCDayTimestamp();
 
     const params = {
         TableName: tableName,
