@@ -4,7 +4,9 @@ import {
     DynamoDBDocumentClient,
     GetCommand,
     GetCommandOutput,
+    PutCommand,
     PutCommandInput,
+    PutCommandOutput,
 } from '@aws-sdk/lib-dynamodb';
 
 export interface RewardMonitorItem {
@@ -69,44 +71,31 @@ export function buildPutItemParams(
 }
 
 /**
- * Saves given item to DynamoDB table as well as a copy with Timestamp = 0 to store as the latest entry
- * Assumes that the primary key is named Timestamp
+ * Writes given item to a DynamoDB table
  * @params ddbDocClient - DynamoDBDocumentClient object
  * @params item - Item to save to DynamoDB
  * @params tableName - Name of DynamoDB table
  * @returns {Promise<PutCommandOutput>} Promise that resolves when PutItemCommand is complete
  */
-export const saveToDynamoDBWithLatestCopy = async (
+export const writeToDynamoDB = async (
     ddbDocClient: DynamoDBDocumentClient,
     item: RewardMonitorItem,
     tableName: string,
-): Promise<BatchWriteCommandOutput> => {
-    const batchWriteParams = {
-        RequestItems: {
-            [tableName]: [
-                {
-                    PutRequest: {
-                        Item: item,
-                    },
-                },
-                {
-                    PutRequest: {
-                        Item: {
-                            ...item,
-                            Timestamp: 0, // Use 0 as the primary key to store as the latest entry
-                        },
-                    },
-                },
-            ],
+): Promise<PutCommandOutput> => {
+    const putParams = {
+        TableName: tableName,
+        Item: {
+            ...item,
         },
     };
-    return ddbDocClient.send(new BatchWriteCommand(batchWriteParams)).catch((err) => {
+    return ddbDocClient.send(new PutCommand(putParams)).catch((err) => {
         throw new Error(`Failed to save data to DynamoDB. Error: ${err}`);
     });
 };
 
 /**
- * Read and return the latest entry from given DynamoDB table sorted by the primary key
+ * Read and return the latest entry from given DynamoDB table
+ * Assumes that the primary key Timestamp is a number representing UTC 00:00:00 of the day
  * @params ddbDocClient - DynamoDBDocumentClient object
  * @params tableName - Name of DynamoDB table
  * @returns {Promise<GetCommandOutput>} Promise that resolves when QueryCommand is complete
@@ -115,10 +104,14 @@ export const readLatestFromDynamoDB = async (
     ddbDocClient: DynamoDBDocumentClient,
     tableName: string,
 ): Promise<GetCommandOutput> => {
+    const now = Date.now();
+    const dayInMilliseconds = 24 * 60 * 60 * 1000;
+    const currentDayTimestamp = now - (now % dayInMilliseconds);
+
     const params = {
         TableName: tableName,
         Key: {
-            Timestamp: 0, // Use 0 as the primary key to get the latest entry
+            Timestamp: currentDayTimestamp,
         },
     };
     return ddbDocClient.send(new GetCommand(params)).catch((err) => {

@@ -3,7 +3,7 @@ import { APIGatewayProxyResult } from 'aws-lambda';
 
 import { ethers } from 'ethers';
 import { Config } from '../utils/config';
-import { saveToDynamoDBWithLatestCopy } from '../utils/dynamoDBHelper';
+import { writeToDynamoDB } from '../utils/dynamoDBHelper';
 import { getMinterOwedPutItem } from '../utils/minterDebtHelper';
 import { sendPagerDutyEvent } from '../utils/pagerDutyHelper';
 
@@ -51,7 +51,7 @@ export const runDailyJob = async (
     }
 
     // Save the data to DynamoDB
-    await saveToDynamoDBWithLatestCopy(ddbDocClient, params.Item, config.TABLE_NAME).catch((err) => {
+    await writeToDynamoDB(ddbDocClient, params.Item, config.TABLE_NAME).catch((err) => {
         console.error(`Failed to save data to DynamoDB. Error: ${err}`);
         throw err;
     });

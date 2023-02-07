@@ -236,6 +236,11 @@ export async function getMinterOwedPutItem(
     config: Config,
     provider: BaseProvider,
 ): Promise<RewardMonitorItemPutCommandInput> {
+    // Mod now by 24 hours and subtract now by the remainder to get the start of the current day
+    const now = Date.now();
+    const dayInMilliseconds = 24 * 60 * 60 * 1000;
+    const currentDayTimestamp = now - (now % dayInMilliseconds);
+
     console.log('Get block information');
     const [creationBlock, latestBlock] = await Promise.all([
         provider.getBlock(MinterJSON.receipt.blockNumber as number),
@@ -266,7 +271,7 @@ export async function getMinterOwedPutItem(
 
     return buildPutItemParams(
         config.TABLE_NAME,
-        latestBlock.timestamp * 1000,
+        currentDayTimestamp,
         1,
         MinterJSON.address,
         'Minter',
