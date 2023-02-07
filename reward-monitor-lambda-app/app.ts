@@ -24,7 +24,9 @@ export const lambdaHandler = async (
     const ddbDocClient = DynamoDBDocumentClient.from(ddbClient);
 
     // Get the santitizied config derived from the environment variables
+    console.log(JSON.stringify(process.env));
     const config = getSanitzedConfig(getConfig());
+    console.log('Config: ' + JSON.stringify(config));
 
     let response = {
         statusCode: 200,

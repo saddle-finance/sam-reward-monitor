@@ -21,6 +21,7 @@ export interface Config {
 // Loading process.env as ENV interface
 
 export const getConfig = (): ENV => {
+    console.log(process.env);
     return {
         TABLE_NAME: process.env.TABLE_NAME,
         ALCHEMY_API_KEY: process.env.ALCHEMY_API_KEY,
