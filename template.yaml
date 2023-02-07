@@ -17,6 +17,16 @@ Parameters:
   EtherscanApi:
     Type: String
     Description: Etherscan API key for mainnet
+  PagerdutyRoutingKey:
+    Type: String
+    Description: Pagerduty routing key for alerting
+  NodeEnv:
+    Type: String
+    Description: Node environment
+    Default: development
+    AllowedValues:
+      - production
+      - development
 
 Resources:
   RewardMonitorTable:
@@ -39,13 +49,15 @@ Resources:
       Architectures:
         - x86_64
       Policies:
-        - DynamoDBWritePolicy:
+        - DynamoDBCrudPolicy:
             TableName: !Ref RewardMonitorTable
       Environment:
         Variables:
           TABLE_NAME: !Ref RewardMonitorTable
           ALCHEMY_API_KEY: !Ref AlchemyApiKey
           ETHERSCAN_API: !Ref EtherscanApi
+          PAGERDUTY_ROUTING_KEY: !Ref PagerdutyRoutingKey
+          NODE_ENV: !Ref NodeEnv
       Events:
         CloudWatchEvent:
           Type: Schedule
