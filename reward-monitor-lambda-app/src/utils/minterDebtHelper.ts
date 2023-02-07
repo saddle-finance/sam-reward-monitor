@@ -5,14 +5,14 @@ import { PutCommandInput } from '@aws-sdk/lib-dynamodb';
 import { Block } from '@ethersproject/abstract-provider';
 import { BaseProvider } from '@ethersproject/providers';
 import { formatUnits } from '@ethersproject/units';
-import { BigNumber, BigNumberish, Contract, ContractInterface, Event } from 'ethers';
+import { BigNumber, BigNumberish, Contract } from 'ethers';
 import { defaultAbiCoder } from 'ethers/lib/utils';
 import fetch from 'node-fetch';
-import pRetry, { AbortError } from 'p-retry';
+import pRetry from 'p-retry';
 
 import MinterJSON from 'saddle-contract/deployments/mainnet/Minter.json';
 import SDLJSON from 'saddle-contract/deployments/mainnet/SDL.json';
-import { buildPutItemParams } from './utils';
+import { buildPutItemParams } from './dynamoDBHelper';
 
 // Etherscan API related constants
 const ETHERSCAN_API = process.env.ETHERSCAN_API;
