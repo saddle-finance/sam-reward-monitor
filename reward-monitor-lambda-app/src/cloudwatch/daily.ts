@@ -6,6 +6,7 @@ import { Config } from '../utils/config';
 import { writeToDynamoDB } from '../utils/dynamoDBHelper';
 import { getMinterOwedPutItem } from '../utils/minterDebtHelper';
 import { sendPagerDutyEvent } from '../utils/pagerDutyHelper';
+import { TimeInSeconds } from '../utils/time';
 
 /**
  * Run the job that is scheduled to run daily
@@ -39,17 +40,14 @@ export const runDailyJob = async (
 
     response.body = JSON.stringify(params.Item);
 
-    // Check if the runway is less than 1 week
+    // Check if the runway is less than 3 days
     // If it is, send a pager duty event, alerting the on-call engineer
-    if (parseInt(params.Item.RunwayInSeconds) < 604800) {
-        console.log('Runway is less than 1 week. Runway: ' + params.Item.RunwayInSeconds);
+    const runwayInDays = Math.round((parseInt(params.Item.RunwayInSeconds) * 100.0) / TimeInSeconds.Day) / 100;
+    if (runwayInDays < 3) {
+        console.log('Runway is less than 3 days. Runway: ${runwayInDays}`');
         if (config.NODE_ENV === 'production') {
             console.log('Sending Pager duty event');
-            await sendPagerDutyEvent(
-                config,
-                `Runway is less than 1 week. Runway: ${params.Item.RunwayInSeconds}`,
-                'warning',
-            );
+            await sendPagerDutyEvent(config, `Runway is less than 1 week. Runway: ${runwayInDays}`, 'warning');
         } else {
             console.log('Pager duty event not sent because NODE_ENV is not production');
         }
