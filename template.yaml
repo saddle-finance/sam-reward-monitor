@@ -85,13 +85,7 @@ Resources:
     Type: AWS::Serverless::Api
     Properties:
       StageName: Prod
-      CacheClusterEnabled: true
-      CacheClusterSize: "0.5"
-      MethodSettings:
-        - CachingEnabled: true
-          CacheTtlInSeconds: 3600 # 3600 secs max cache
-          HttpMethod: "*" # Required for caching
-          ResourcePath: "/*" # Requried for caching
+      CacheClusterEnabled: false
 
 Outputs:
   # Outputs can be checked under the CloudFormation stack page
