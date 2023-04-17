@@ -1,5 +1,6 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { lambdaHandler } from '../../app';
+import assert from 'assert';
 
 describe('Unit test for app handler', function () {
     it('verifies successful response', async () => {
@@ -57,5 +58,7 @@ describe('Unit test for app handler', function () {
             stageVariables: {},
         };
         const result: APIGatewayProxyResult = await lambdaHandler(event);
+        assert.equal(result.statusCode, 200);
+        assert.equal(result.body.split(',').length, 2);
     });
 });
