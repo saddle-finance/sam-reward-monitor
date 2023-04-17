@@ -28,13 +28,9 @@ export const handleTokenPrice = async (config: Config, event: APIGatewayProxyEve
         if (!response.ok) {
             throw new Error(`Unexpected response: ${response.status} ${response.statusText}`);
         }
-        // Below includes objects like {"<tokenAddress>": {"usd": 2057.02}
-        const data = await response.json();
-        console.log(data);
-        console.log('stringify: ' + JSON.stringify(data));
         return {
             statusCode: 200,
-            body: JSON.stringify(data),
+            body: JSON.stringify(await response.json()),
         };
     } catch (error) {
         console.error(error);

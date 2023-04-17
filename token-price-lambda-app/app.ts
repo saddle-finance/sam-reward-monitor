@@ -22,9 +22,6 @@ export const lambdaHandler = async (event: APIGatewayEvent): Promise<APIGatewayP
         statusCode: 200,
         body: "No job was run. This is likely because the API path was not '/getPrices'",
     };
-    console.log('API Gateway event received');
-    console.log('event.path: ', event.path);
-
     if (event.path.toLowerCase() === '/getprices') {
         console.log('Handling /getPrices');
         response = await handleTokenPrice(config, event).catch((err) => {
