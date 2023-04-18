@@ -60,5 +60,11 @@ describe('Unit test for app handler', function () {
         const result: APIGatewayProxyResult = await lambdaHandler(event);
         assert.equal(result.statusCode, 200);
         assert.equal(result.body.split(',').length, 2);
+        // check that the addresses are in the response
+        assert.ok(result.body.includes('0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'));
+        assert.ok(result.body.includes('0x2260fac5e5542a773aa44fbcfedf7c193bc2c599'));
+        // check that the price is a number
+        assert.ok(!isNaN(parseFloat(result.body.split(',')[0].split(':')[1])));
+        assert.ok(!isNaN(parseFloat(result.body.split(',')[1].split(':')[1])));
     });
 });
