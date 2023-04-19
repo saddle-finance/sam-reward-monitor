@@ -94,7 +94,7 @@ Resources:
         Variables:
           NODE_ENV: !Ref NodeEnv
       Events:
-        GetRecentlySavedJson:
+        GetRecentPricesQuery:
           Type: Api
           Properties:
             RestApiId: !Ref TokenPriceAPI
@@ -118,7 +118,7 @@ Resources:
       StageName: Prod
       CacheClusterEnabled: false
 
-  TokenPriceAPI:
+  TokenPriceApi:
     Type: AWS::Serverless::Api
     Properties:
       StageName: Prod
@@ -143,7 +143,10 @@ Outputs:
     Value: !GetAtt TokenPriceFunction.Arn
   TokenPriceFunctionIamRole:
     Description: "Implicit IAM Role created for Reward Monitor Lambda function"
-    Value: !GetAtt TokenPriceFunction.Arn
+    Value: !GetAtt TokenPriceFunctionRole.Arn
   ProdDataEndpoint:
     Description: "API Prod stage endpoint"
     Value: !Sub "https://${RewardMonitorApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
+  ProdDataEndpointTokenPrice:
+    Description: "API Prod stage endpoint token price api"
+    Value: !Sub "https://${TokenPriceApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
