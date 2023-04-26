@@ -97,7 +97,7 @@ Resources:
         GetRecentPricesQuery:
           Type: Api
           Properties:
-            RestApiId: !Ref TokenPriceAPI
+            RestApiId: !Ref TokenPriceApi
             Path: /getPrices
             Method: get
     Metadata: # Manage esbuild properties
@@ -127,8 +127,47 @@ Resources:
       MethodSettings:
         - CachingEnabled: true
           CacheTtlInSeconds: 300 # 3600 secs max cache
-          HttpMethod: "*" # Required for caching
-          ResourcePath: "/*" # Requried for caching
+          HttpMethod: GET # Required for caching
+          ResourcePath: "/getPrices" # Requried for caching
+      DefinitionBody:
+        swagger: 2.0
+        basePath: /Prod
+        info:
+          title: token-price-api-stack
+        x-amazon-apigateway-policy:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal: "*"
+              Action: execute-api:Invoke
+              Resource:
+                - execute-api:/*/*/*
+        paths:
+          "/getPrices":
+            get:
+              # ** Parameter(s) can be set here **
+              parameters:
+                - name: "contractAddresses"
+                  in: "query"
+                  required: "true"
+                  type: "string"
+                - name: "platform"
+                  in: "query"
+                  required: "true"
+                  type: "string"
+              x-amazon-apigateway-integration:
+              # ** Key is cached **
+                cacheKeyParameters:
+                  - method.request.querystring.contractAddresses
+                  - method.request.querystring.platform
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${TokenPriceFunction.Arn}/invocations
+              responses: {}
+      EndpointConfiguration: EDGE
+      Cors:
+        AllowHeaders: "'*'"
 
 Outputs:
   # Outputs can be checked under the CloudFormation stack page
