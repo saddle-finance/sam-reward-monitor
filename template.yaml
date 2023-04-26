@@ -81,11 +81,93 @@ Resources:
           - "@aws-sdk"
           - "esbuild"
 
+  TokenPriceFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      Timeout: 10
+      CodeUri: token-price-lambda-app/
+      Handler: app.lambdaHandler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      Environment:
+        Variables:
+          NODE_ENV: !Ref NodeEnv
+      Events:
+        GetRecentPricesQuery:
+          Type: Api
+          Properties:
+            RestApiId: !Ref TokenPriceApi
+            Path: /getPrices
+            Method: get
+    Metadata: # Manage esbuild properties
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: "es2020"
+        Sourcemap: true
+        EntryPoints:
+          - app.ts
+        External:
+          - "@aws-sdk"
+          - "esbuild"
+
   RewardMonitorApi:
     Type: AWS::Serverless::Api
     Properties:
       StageName: Prod
       CacheClusterEnabled: false
+
+  TokenPriceApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      CacheClusterEnabled: true
+      CacheClusterSize: "0.5"
+      MethodSettings:
+        - CachingEnabled: true
+          CacheTtlInSeconds: 300 # 3600 secs max cache
+          HttpMethod: GET # Required for caching
+          ResourcePath: "/getPrices" # Requried for caching
+      DefinitionBody:
+        swagger: 2.0
+        basePath: /Prod
+        info:
+          title: token-price-api-stack
+        x-amazon-apigateway-policy:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal: "*"
+              Action: execute-api:Invoke
+              Resource:
+                - execute-api:/*/*/*
+        paths:
+          "/getPrices":
+            get:
+              # ** Parameter(s) can be set here **
+              parameters:
+                - name: "contractAddresses"
+                  in: "query"
+                  required: "true"
+                  type: "string"
+                - name: "platform"
+                  in: "query"
+                  required: "true"
+                  type: "string"
+              x-amazon-apigateway-integration:
+              # ** Key is cached **
+                cacheKeyParameters:
+                  - method.request.querystring.contractAddresses
+                  - method.request.querystring.platform
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${TokenPriceFunction.Arn}/invocations
+              responses: {}
+      EndpointConfiguration: EDGE
+      Cors:
+        AllowHeaders: "'*'"
 
 Outputs:
   # Outputs can be checked under the CloudFormation stack page
@@ -95,6 +177,15 @@ Outputs:
   RewardMonitorFunctionIamRole:
     Description: "Implicit IAM Role created for Reward Monitor Lambda function"
     Value: !GetAtt RewardMonitorFunctionRole.Arn
+  TokenPriceFunction:
+    Description: "Reward Monitor Lambda Function ARN"
+    Value: !GetAtt TokenPriceFunction.Arn
+  TokenPriceFunctionIamRole:
+    Description: "Implicit IAM Role created for Reward Monitor Lambda function"
+    Value: !GetAtt TokenPriceFunctionRole.Arn
   ProdDataEndpoint:
     Description: "API Prod stage endpoint"
     Value: !Sub "https://${RewardMonitorApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
+  ProdDataEndpointTokenPrice:
+    Description: "API Prod stage endpoint token price api"
+    Value: !Sub "https://${TokenPriceApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
